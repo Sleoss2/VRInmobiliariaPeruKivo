@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DreamHome VR — Advanced Interactive Experience</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/super-hands@^5.0.0/dist/super-hands.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/loaders/GLTFLoader.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      margin: 0; 
+      background: #000; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+    
+    #debug {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.92);
+      color: #00ff00;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      padding: 12px;
+      max-width: 320px;
+      z-index: 999;
+      border: 2px solid #00ff00;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+    }
+
+    .debug-line { 
+      margin: 2px 0; 
+      line-height: 1.4;
+    }
+    .debug-title { 
+      font-weight: bold; 
+      margin-bottom: 6px; 
+      color: #00ff00; 
+      text-shadow: 0 0 5px #00ff00;
+    }
+    .debug-value { 
+      color: #aaffaa; 
+      font-weight: 500;
+    }
+    .debug-warning {
+      color: #ffaa00;
+    }
+
+    #modelLoader {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.92);
+      color: #fff;
+      padding: 15px;
+      border: 2px solid #2e86de;
+      border-radius: 4px;
+      max-width: 300px;
+      z-index: 999;
+      box-shadow: 0 0 10px rgba(46, 134, 222, 0.3);
+    }
+
+    #modelLoader h3 {
+      margin: 0 0 10px 0;
+      color: #2e86de;
+      font-size: 12px;
+      text-shadow: 0 0 5px #2e86de;
+    }
+
+    .model-input-group {
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    #modelUrlInput {
+      padding: 6px;
+      border: 1px solid #2e86de;
+      border-radius: 2px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 10px;
+      outline: none;
+    }
+
+    #modelUrlInput:focus {
+      border-color: #00ff00;
+      box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+    }
+
+    #loadModelBtn {
+      padding: 6px 12px;
+      background: #2e86de;
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    #loadModelBtn:hover:not(:disabled) { 
+      background: #1456a0;
+      box-shadow: 0 0 8px rgba(46, 134, 222, 0.5);
+    }
+    #loadModelBtn:disabled { 
+      background: #666; 
+      cursor: not-allowed; 
+      opacity: 0.6;
+    }
+
+    #modelsList {
+      font-size: 10px;
+      color: #aaa;
+      margin-top: 10px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .model-item {
+      padding: 4px;
+      margin: 2px 0;
+      background: #222;
+      border-left: 3px solid #2e86de;
+      padding-left: 6px;
+      border-radius: 1px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Debug Panel -->
+  <div id="debug">
+    <div class="debug-title">⚡ VR Scene Control</div>
+    <div class="debug-line">Status: <span class="debug-value" id="status">INIT</span></div>
+    <div class="debug-line">Hold: <span class="debug-value" id="hold-status">idle</span></div>
+    <div class="debug-line">Grab: <span class="debug-value" id="grab-status">none</span></div>
+    <div class="debug-line">Drag: <span class="debug-value" id="drag-status">none</span></div>
+    <div class="debug-line">---</div>
+    <div class="debug-line">Panel X: <span class="debug-value" id="pos-x">0.00</span></div>
+    <div class="debug-line">Panel Y: <span class="debug-value" id="pos-y">0.00</span></div>
+    <div class="debug-line">Panel Z: <span class="debug-value" id="pos-z">0.00</span></div>
+    <div class="debug-line">---</div>
+    <div class="debug-line">Models: <span class="debug-value" id="model-count">0</span></div>
+    <div class="debug-line"><small>WASD/Mouse: Look | Click+Drag: Move</small></div>
+  </div>
+
+  <!-- Model Loader UI -->
+  <div id="modelLoader">
+    <h3>📦 Model Loader (glTF/GLB)</h3>
+    <div class="model-input-group">
+      <input 
+        type="text" 
+        id="modelUrlInput" 
+        placeholder="https://example.com/model.glb"
+      />
+      <button id="loadModelBtn">Load Model</button>
+    </div>
+    <div id="modelsList">
+      <div style="color: #666; font-size: 9px;">No models loaded</div>
+    </div>
+  </div>
+
+  <!-- A-Frame VR Scene -->
+  <a-scene vr-mode-ui="enabled: true" renderer="antialias: true; maxCanvasWidth: 1280; maxCanvasHeight: 720" background="color: #87CEEB">
+    <a-light type="directional" intensity="1" position="5 3 5" shadow></a-light>
+    <a-light type="ambient" intensity="0.7"></a-light>
+
+    <a-plane id="ground" rotation="-90 0 0" width="80" height="80" color="#0b7a0b" static-body position="0 0 0"></a-plane>
+    <a-sky color="#87CEEB"></a-sky>
+
+    <a-entity id="rig">
+      <a-entity id="camera" camera="active: true" position="0 1.6 0" wasd-controls="acceleration: 25; fly: false" look-controls="pointerLockEnabled: false; reverseMouseDrag: false">
+        <a-cursor id="cursor" color="#000" scale="0.01 0.01 0.01" position="0 0 -1"></a-cursor>
+      </a-entity>
+
+      <a-entity id="leftHand" hand-controls="hand: left; handModelStyle: lowPoly; color: #999" super-hands position="0 0 0"></a-entity>
+      <a-entity id="rightHand" hand-controls="hand: right; handModelStyle: lowPoly; color: #999" super-hands position="0 0 0"></a-entity>
+    </a-entity>
+
+    <a-entity id="landingPanel" geometry="primitive: plane; width: 2.4; height: 1.8" material="color: #ffffff; side: double" position="0 1.5 -2.5" rotation="0 0 0" grabbable draggable stretchable>
+      <a-entity id="panelStatus" text="value: Loading DreamHome VR...; align: center; width: 4; color: #333; fontSize: 80" position="0 0 0.01"></a-entity>
+    </a-entity>
+
+    <a-box color="#33cc33" position="-4 0.5 -3" scale="1 1 1" static-body></a-box>
+    <a-sphere color="#2e86de" position="4 0.5 -3" scale="1 1 1" static-body></a-sphere>
+
+    <a-entity position="0 2.3 -2.5" text="value: Hover cursor over panel • Grab with hand • Click+Drag to move • Load models in UI; align: center; width: 5; fontSize: 50; color: #000"></a-entity>
+  </a-scene>
+
+  <script>
+    /**
+     * Robust VR Panel Controller
+     * Prevents race conditions between grab, drag, and cursor hover
+     * Uses strict state machine pattern
+     */
+    
+    class VRPanelManager {
+      constructor() {
+        this.panel = null;
+        this.scene = null;
+        this.cursor = null;
+        this.models = new Map();
+        
+        // State machine (only ONE state active at a time)
+        this.STATE = {
+          IDLE: 'IDLE',
+          CURSOR_HOVER: 'CURSOR_HOVER',
+          MOUSE_DRAGGING: 'MOUSE_DRAGGING',
+          CONTROLLER_GRABBING: 'CONTROLLER_GRABBING',
+        };
+        
+        this.state = this.STATE.IDLE;
+        this.prevState = this.STATE.IDLE;
+        
+        // Interaction data
+        this.dragStart = { x: 0, y: 0 };
+        this.panelStartPos = new THREE.Vector3();
+        this.currentGrabbingHand = null;
+        this.cursorOverPanel = false;
+        this.dragThreshold = 5;
+        
+        this.init();
+      }
+
+      async init() {
+        // Wait for A-Frame scene
+        const aframeScene = document.querySelector('a-scene');
+        await new Promise((resolve) => {
+          if (aframeScene.hasLoaded) resolve();
+          else aframeScene.addEventListener('loaded', resolve, { once: true });
+        });
+
+        this.scene = aframeScene;
+        this.panel = document.querySelector('#landingPanel');
+        this.cursor = document.querySelector('#cursor');
+
+        if (!this.panel) {
+          console.error('[VRPanelManager] Panel not found');
+          return;
+        }
+
+        this.setupEventListeners();
+        this.loadLandingPage();
+        this.startUpdateLoop();
+        
+        document.querySelector('#status').textContent = 'READY ✓';
+        console.log('[VRPanelManager] Initialized');
+      }
+
+      setupEventListeners() {
+        // === CONTROLLER GRAB EVENTS (Priority 1) ===
+        this.panel.addEventListener('grab-start', (evt) => this.handleGrabStart(evt));
+        this.panel.addEventListener('grab-end', (evt) => this.handleGrabEnd(evt));
+
+        // === CURSOR HOVER DETECTION (Priority 2) ===
+        this.panel.addEventListener('mouseenter', () => this.handleCursorEnter());
+        this.panel.addEventListener('mouseleave', () => this.handleCursorLeave());
+
+        // === MOUSE DRAG EVENTS (Priority 3 - Only when not grabbed) ===
+        document.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+      }
+
+      // ============= STATE MANAGEMENT =============
+      setState(newState) {
+        if (newState === this.state) return; // No-op if same state
+        
+        this.prevState = this.state;
+        this.state = newState;
+        
+        // Update debug UI
+        const debugMap = {
+          [this.STATE.IDLE]: 'idle',
+          [this.STATE.CURSOR_HOVER]: 'hovering ✓',
+          [this.STATE.MOUSE_DRAGGING]: 'dragging 🖱',
+          [this.STATE.CONTROLLER_GRABBING]: 'grabbed ✋',
+        };
+        
+        document.querySelector('#hold-status').textContent = debugMap[newState] || 'unknown';
+        console.log(`[State] ${this.prevState} → ${newState}`);
+      }
+
+      // ============= CURSOR HOVER (Detection) =============
+      handleCursorEnter() {
+        if (this.state === this.STATE.CONTROLLER_GRABBING) return; // Don't interrupt grab
+        this.cursorOverPanel = true;
+        this.setState(this.STATE.CURSOR_HOVER);
+        this.panel.setAttribute('material', 'color: #e8e8e8'); // Highlight on hover
+      }
+
+      handleCursorLeave() {
+        this.cursorOverPanel = false;
+        if (this.state === this.STATE.CURSOR_HOVER) {
+          this.setState(this.STATE.IDLE);
+          this.panel.setAttribute('material', 'color: #ffffff'); // Reset color
+        }
+      }
+
+      // ============= CONTROLLER GRAB (Priority 1) =============
+      handleGrabStart(evt) {
+        // Force state to grabbing (highest priority)
+        this.setState(this.STATE.CONTROLLER_GRABBING);
+        
+        this.currentGrabbingHand = evt.detail?.hand;
+        this.panelStartPos.copy(this.panel.object3D.position);
+        
+        if (this.currentGrabbingHand) {
+          this.currentGrabbingHand.appendChild(this.panel);
+          this.panel.setAttribute('position', '0 -0.2 -0.35');
+          this.panel.setAttribute('material', 'color: #f0f0f0');
+        }
+        
+        document.querySelector('#grab-status').textContent = '✓ grabbing';
+      }
+
+      handleGrabEnd(evt) {
+        if (this.state !== this.STATE.CONTROLLER_GRABBING) return; // Safety check
+        
+        document.querySelector('#grab-status').textContent = 'none';
+        
+        if (this.currentGrabbingHand) {
+          try {
+            // Save world position before re-parenting
+            const worldPos = new THREE.Vector3();
+            this.panel.object3D.getWorldPosition(worldPos);
+            
+            // Re-parent to scene
+            this.scene.appendChild(this.panel);
+            
+            // Convert to local coordinates
+            const localPos = this.scene.object3D.worldToLocal(worldPos);
+            this.panel.object3D.position.copy(localPos);
+            
+            console.log(`[Grab Release] Position: (${localPos.x.toFixed(2)}, ${localPos.y.toFixed(2)}, ${localPos.z.toFixed(2)})`);
+          } catch (err) {
+            console.error('[Grab Release] Error:', err);
+            // Fallback
+            this.scene.appendChild(this.panel);
+            this.panel.setAttribute('position', '0 1.5 -2.5');
+          }
+          
+          this.currentGrabbingHand = null;
+        }
+        
+        // Revert to previous state
+        this.setState(this.cursorOverPanel ? this.STATE.CURSOR_HOVER : this.STATE.IDLE);
+        this.panel.setAttribute('material', 'color: #ffffff');
+      }
+
+      // ============= MOUSE DRAG (Priority 3 - Blocked if grabbed or not hovering) =============
+      handleMouseDown(e) {
+        // Only allow drag start if cursor is over panel AND not grabbed
+        if (this.state === this.STATE.CONTROLLER_GRABBING) return;
+        if (!this.cursorOverPanel) return; // CRITICAL: Only drag when cursor is over panel
+        
+        this.dragStart.x = e.clientX;
+        this.dragStart.y = e.clientY;
+      }
+
+      handleMouseMove(e) {
+        // Only drag if:
+        // 1. Not grabbed by controller
+        // 2. Cursor is over panel
+        // 3. Mouse button is held
+        if (this.state === this.STATE.CONTROLLER_GRABBING) return;
+        if (!this.cursorOverPanel) return; // CRITICAL: Ignore move if not over panel
+        if (!e.buttons) return; // Mouse not held
+        
+        const dx = e.clientX - this.dragStart.x;
+        const dy = e.clientY - this.dragStart.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Exceeded drag threshold
+        if (distance >= this.dragThreshold && this.state !== this.STATE.MOUSE_DRAGGING) {
+          this.setState(this.STATE.MOUSE_DRAGGING);
+          this.panelStartPos.copy(this.panel.object3D.position);
+          this.dragStart.x = e.clientX;
+          this.dragStart.y = e.clientY;
+          document.querySelector('#drag-status').textContent = '🖱 dragging';
+        }
+        
+        // Apply drag
+        if (this.state === this.STATE.MOUSE_DRAGGING) {
+          const speed = 0.005;
+          const newDx = e.clientX - this.dragStart.x;
+          const newDy = e.clientY - this.dragStart.y;
+          
+          this.panel.object3D.position.x = this.panelStartPos.x + (newDx * speed);
+          this.panel.object3D.position.y = this.panelStartPos.y - (newDy * speed);
+        }
+      }
+
+      handleMouseUp(e) {
+        // Only transition out of dragging if we were dragging
+        if (this.state === this.STATE.MOUSE_DRAGGING) {
+          this.setState(this.cursorOverPanel ? this.STATE.CURSOR_HOVER : this.STATE.IDLE);
+          document.querySelector('#drag-status').textContent = 'none';
+        }
+        // If cursor left panel during drag, reset to idle
+        if (!this.cursorOverPanel) {
+          this.setState(this.STATE.IDLE);
+        }
+      }
+
+      // ============= UTILITIES =============
+      loadLandingPage() {
+        fetch('/')
+          .then(res => res.text())
+          .then(html => {
+            const titleMatch = html.match(/<title>(.*?)<\/title>/);
+            const title = titleMatch ? titleMatch[1] : 'Landing Page';
+            document.querySelector('#panelStatus').setAttribute('text', `value: ${title}\nReady for Interaction ✓; align: center; width: 4; color: #0b7a0b; fontSize: 70`);
+          })
+          .catch(err => {
+            console.error('[Load] Failed:', err);
+            document.querySelector('#panelStatus').setAttribute('text', `value: Error loading page; align: center; width: 4; color: red; fontSize: 60`);
+          });
+      }
+
+      startUpdateLoop() {
+        setInterval(() => {
+          const pos = this.panel.object3D.position;
+          document.querySelector('#pos-x').textContent = pos.x.toFixed(2);
+          document.querySelector('#pos-y').textContent = pos.y.toFixed(2);
+          document.querySelector('#pos-z').textContent = pos.z.toFixed(2);
+        }, 250);
+      }
+
+      // ============= MODEL LOADER =============
+      async loadModel(url, name) {
+        try {
+          const loader = new THREE.GLTFLoader();
+          const gltf = await new Promise((resolve, reject) => {
+            loader.load(url, resolve, undefined, reject);
+          });
+
+          const model = gltf.scene;
+          model.position.set(0, 0.5, -3);
+          model.scale.set(1, 1, 1);
+
+          const wrapper = document.createElement('a-entity');
+          wrapper.setAttribute('id', 'model-' + name);
+          this.scene.appendChild(wrapper);
+          wrapper.object3D.add(model);
+
+          this.models.set(name, model);
+          this.updateModelsList();
+          
+          return model;
+        } catch (err) {
+          console.error('[ModelLoader] Failed:', err);
+          throw err;
+        }
+      }
+
+      updateModelsList() {
+        const list = document.querySelector('#modelsList');
+        const names = Array.from(this.models.keys());
+        document.querySelector('#model-count').textContent = names.length;
+
+        if (names.length === 0) {
+          list.innerHTML = '<div style="color: #666; font-size: 9px;">No models loaded</div>';
+        } else {
+          list.innerHTML = names.map(n => `<div class="model-item">✓ ${n}</div>`).join('');
+        }
+      }
+    }
+
+    // ============= INITIALIZATION =============
+    const vrManager = new VRPanelManager();
+
+    // Model Loader UI
+    document.querySelector('#loadModelBtn').addEventListener('click', async () => {
+      const url = document.querySelector('#modelUrlInput').value.trim();
+      if (!url) {
+        alert('Please enter a valid glTF/GLB model URL');
+        return;
+      }
+
+      const btn = document.querySelector('#loadModelBtn');
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+
+      try {
+        const name = 'model_' + Date.now();
+        await vrManager.loadModel(url, name);
+        document.querySelector('#modelUrlInput').value = '';
+      } catch (err) {
+        alert('Failed to load model:\n' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Load Model';
+      }
+    });
+  </script>
+
+</body>
+</html>

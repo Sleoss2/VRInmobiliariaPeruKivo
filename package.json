@@ -1,0 +1,13 @@
+{
+  "name": "dreamhome-vr",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "bun index.js",
+    "dev": "bun run start"
+  },
+  "devDependencies": {
+    "@types/three": "^r128",
+    "typescript": "^5.3.3"
+  }
+}
