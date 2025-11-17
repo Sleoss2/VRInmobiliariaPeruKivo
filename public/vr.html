@@ -65,6 +65,25 @@
       box-shadow: 0 0 10px rgba(46, 134, 222, 0.3);
     }
 
+    #back-btn-vr {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      background: #667eea;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      z-index: 998;
+      font-size: 12px;
+    }
+
+    #back-btn-vr:hover {
+      background: #764ba2;
+    }
+
     #modelLoader h3 {
       margin: 0 0 10px 0;
       color: #2e86de;
@@ -135,6 +154,9 @@
   </style>
 </head>
 <body>
+  <!-- Back Button -->
+  <button id="back-btn-vr">← Back to Home</button>
+
   <!-- Debug Panel -->
   <div id="debug">
     <div class="debug-title">⚡ VR Scene Control</div>
@@ -194,7 +216,21 @@
     <a-entity position="0 2.3 -2.5" text="value: Hover cursor over panel • Grab with hand • Click+Drag to move • Load models in UI; align: center; width: 5; fontSize: 50; color: #000"></a-entity>
   </a-scene>
 
-  <script>
+  <script type="module">
+    /**
+     * VR Scene Integration Module
+     * Imports analytics, gesture recognition, and performance profiling
+     */
+    
+    // Import modules
+    import { emitEvent, addEventListener } from './js/vr-event-emitter.js';
+    import { analytics } from './js/analytics.js';
+    import { gestureRecognizer } from './js/gesture-recognizer.js';
+    import { profiler } from './js/performance-profiler.js';
+    import { config } from './js/config.js';
+    import { dashboard } from './js/debug-dashboard.js';
+    import ExperienceNavigator from './js/experience-navigator.js';
+
     /**
      * Robust VR Panel Controller
      * Prevents race conditions between grab, drag, and cursor hover
@@ -247,6 +283,7 @@
         }
 
         this.setupEventListeners();
+        this.setupGestureListeners();
         this.loadLandingPage();
         this.startUpdateLoop();
         
@@ -267,6 +304,38 @@
         document.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+      }
+
+      setupGestureListeners() {
+        // === GESTURE RECOGNITION EVENTS ===
+        addEventListener('onPinchGesture', (evt) => {
+          console.log('[Gesture] Pinch detected', evt.detail);
+          // Respond to pinch - could select/grab panel
+          this.panel.setAttribute('material', 'color: #ffcc00');
+          setTimeout(() => this.panel.setAttribute('material', 'color: #ffffff'), 200);
+        });
+
+        addEventListener('onOpenHandGesture', (evt) => {
+          console.log('[Gesture] Open hand detected', evt.detail);
+          // Respond to open hand - could dismiss panel
+          this.panel.setAttribute('material', 'color: #ff6b6b');
+          setTimeout(() => this.panel.setAttribute('material', 'color: #ffffff'), 200);
+        });
+
+        addEventListener('onPointGesture', (evt) => {
+          console.log('[Gesture] Point detected', evt.detail);
+          // Respond to point - could highlight/focus
+          this.panel.setAttribute('material', 'color: #00ff00');
+          setTimeout(() => this.panel.setAttribute('material', 'color: #ffffff'), 200);
+        });
+
+        // === PERFORMANCE MONITORING ===
+        addEventListener('onFpsUpdate', (evt) => {
+          const { fps, frameTime } = evt.detail;
+          if (fps < config.DEBUG_CONFIG.PERFORMANCE_WARNING_THRESHOLD) {
+            console.warn(`[Performance] FPS dropped to ${fps}`);
+          }
+        });
       }
 
       // ============= STATE MANAGEMENT =============
@@ -319,12 +388,35 @@
         }
         
         document.querySelector('#grab-status').textContent = '✓ grabbing';
+        
+        // === ANALYTICS TRACKING ===
+        const pos = this.panel.object3D.position;
+        analytics.recordGrab({
+          timestamp: Date.now(),
+          position: { x: pos.x, y: pos.y, z: pos.z },
+          hand: this.currentGrabbingHand ? 'tracked' : 'mouse',
+          panelId: 'landingPanel'
+        });
+        
+        // === EMIT GRAB EVENT ===
+        emitEvent('onPanelGrabbed', { panel: this.panel, hand: this.currentGrabbingHand });
       }
 
       handleGrabEnd(evt) {
         if (this.state !== this.STATE.CONTROLLER_GRABBING) return; // Safety check
         
         document.querySelector('#grab-status').textContent = 'none';
+        
+        // === ANALYTICS: Record successful grab completion ===
+        const endPos = this.panel.object3D.position;
+        analytics.recordGrab({
+          timestamp: Date.now(),
+          position: { x: endPos.x, y: endPos.y, z: endPos.z },
+          hand: this.currentGrabbingHand ? 'tracked' : 'mouse',
+          panelId: 'landingPanel',
+          success: true,
+          duration: evt.detail?.duration || 0
+        });
         
         if (this.currentGrabbingHand) {
           try {
@@ -353,6 +445,9 @@
         // Revert to previous state
         this.setState(this.cursorOverPanel ? this.STATE.CURSOR_HOVER : this.STATE.IDLE);
         this.panel.setAttribute('material', 'color: #ffffff');
+        
+        // === EMIT EVENT ===
+        emitEvent('onPanelReleased', { panel: this.panel });
       }
 
       // ============= MOUSE DRAG (Priority 3 - Blocked if grabbed or not hovering) =============
@@ -395,10 +490,32 @@
           
           this.panel.object3D.position.x = this.panelStartPos.x + (newDx * speed);
           this.panel.object3D.position.y = this.panelStartPos.y - (newDy * speed);
+          
+          // === ANALYTICS: Track drag movement ===
+          analytics.recordDrag({
+            timestamp: Date.now(),
+            startPosition: { x: this.panelStartPos.x, y: this.panelStartPos.y, z: this.panelStartPos.z },
+            currentPosition: { x: this.panel.object3D.position.x, y: this.panel.object3D.position.y, z: this.panel.object3D.position.z },
+            deltaX: newDx,
+            deltaY: newDy,
+            distance: Math.sqrt(newDx * newDx + newDy * newDy),
+            panelId: 'landingPanel'
+          });
         }
       }
 
       handleMouseUp(e) {
+        // === ANALYTICS: Record drag completion ===
+        if (this.state === this.STATE.MOUSE_DRAGGING) {
+          analytics.recordDrag({
+            timestamp: Date.now(),
+            startPosition: { x: this.panelStartPos.x, y: this.panelStartPos.y, z: this.panelStartPos.z },
+            finalPosition: { x: this.panel.object3D.position.x, y: this.panel.object3D.position.y, z: this.panel.object3D.position.z },
+            completed: true,
+            panelId: 'landingPanel'
+          });
+        }
+        
         // Only transition out of dragging if we were dragging
         if (this.state === this.STATE.MOUSE_DRAGGING) {
           this.setState(this.cursorOverPanel ? this.STATE.CURSOR_HOVER : this.STATE.IDLE);
@@ -412,12 +529,22 @@
 
       // ============= UTILITIES =============
       loadLandingPage() {
+        // === START ANALYTICS SESSION ===
+        analytics.startSession();
+        
         fetch('/')
           .then(res => res.text())
           .then(html => {
             const titleMatch = html.match(/<title>(.*?)<\/title>/);
             const title = titleMatch ? titleMatch[1] : 'Landing Page';
             document.querySelector('#panelStatus').setAttribute('text', `value: ${title}\nReady for Interaction ✓; align: center; width: 4; color: #0b7a0b; fontSize: 70`);
+            
+            // === ANALYTICS: Record page view ===
+            analytics.recordPropertyView({
+              timestamp: Date.now(),
+              property: { id: 'landing', title },
+              duration: 0
+            });
           })
           .catch(err => {
             console.error('[Load] Failed:', err);
@@ -431,6 +558,12 @@
           document.querySelector('#pos-x').textContent = pos.x.toFixed(2);
           document.querySelector('#pos-y').textContent = pos.y.toFixed(2);
           document.querySelector('#pos-z').textContent = pos.z.toFixed(2);
+          
+          // === PERFORMANCE TRACKING: Update debug panel with performance metrics ===
+          if (config.DEBUG_CONFIG.ENABLE_PERFORMANCE_PROFILING) {
+            const metrics = profiler.getMetrics();
+            // Could add FPS/latency display to debug panel here if desired
+          }
         }, 250);
       }
 
@@ -500,7 +633,16 @@
         btn.textContent = 'Load Model';
       }
     });
+
+    // Back button handler
+    document.querySelector('#back-btn-vr').addEventListener('click', () => {
+      console.log('[VR] Navigating back to home');
+      window.location.href = '/';
+    });
   </script>
+
+  <!-- Load Experience Navigator for page connections -->
+  <script src="/js/experience-navigator.js"></script>
 
 </body>
 </html>

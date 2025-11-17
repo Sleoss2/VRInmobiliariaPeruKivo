@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quick Navigation Test</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: monospace;
+      background: #1a1a1a;
+      color: #0f0;
+      padding: 30px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .section {
+      background: #000;
+      border: 2px solid #0f0;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .section h2 {
+      margin: 0 0 15px 0;
+      color: #0f0;
+    }
+    button {
+      background: #0f0;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    button:hover {
+      background: #00ff00;
+      box-shadow: 0 0 10px #0f0;
+    }
+    .log {
+      background: #0a0a0a;
+      border: 1px solid #0f0;
+      padding: 10px;
+      margin: 10px 0;
+      min-height: 150px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .info { color: #0f0; }
+    .pass { color: #0f0; font-weight: bold; }
+    .warn { color: #ff0; }
+    .fail { color: #f00; font-weight: bold; }
+    .nav-link {
+      display: inline-block;
+      background: #667eea;
+      color: #fff;
+      padding: 10px 20px;
+      margin: 5px;
+      text-decoration: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .nav-link:hover {
+      background: #764ba2;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 DreamHome Navigation System - Quick Test</h1>
+
+  <div class="section">
+    <h2>1️⃣ Test Pages Load</h2>
+    <button onclick="testLoad()">Test All Pages</button>
+    <div id="test-load-log" class="log"></div>
+  </div>
+
+  <div class="section">
+    <h2>2️⃣ Direct Navigation Test</h2>
+    <a class="nav-link" href="/" onclick="logNav('Home')">🏠 Go Home</a>
+    <a class="nav-link" href="/vr.html" onclick="logNav('VR')">🥽 Go VR</a>
+    <a class="nav-link" href="/va.html" onclick="logNav('AR')">📱 Go AR</a>
+    <div id="nav-log" class="log"></div>
+  </div>
+
+  <div class="section">
+    <h2>3️⃣ Navigator Check</h2>
+    <button onclick="checkNavigator()">Check Navigator Module</button>
+    <div id="nav-check-log" class="log"></div>
+  </div>
+
+  <div class="section">
+    <h2>4️⃣ Session Storage</h2>
+    <button onclick="checkSession()">Check Session Data</button>
+    <button onclick="clearSession()">Clear Session</button>
+    <div id="session-log" class="log"></div>
+  </div>
+
+  <script>
+    const logTo = (elementId, message, type = 'info') => {
+      const el = document.querySelector(`#${elementId}`);
+      const line = document.createElement('div');
+      line.className = type;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    };
+
+    const testLoad = async () => {
+      const logId = 'test-load-log';
+      document.querySelector(`#${logId}`).innerHTML = '';
+      logTo(logId, 'Starting page load tests...', 'info');
+
+      const pages = ['/', '/vr.html', '/va.html'];
+      for (const page of pages) {
+        try {
+          const response = await fetch(page);
+          if (response.ok) {
+            const html = await response.text();
+            const hasNav = html.includes('experience-navigator');
+            const hasA = html.includes('<a-scene');
+            logTo(logId, `✓ ${page} loaded (navigator: ${hasNav ? 'YES' : 'NO'}, a-frame: ${hasA ? 'YES' : 'NO'})`, 'pass');
+          } else {
+            logTo(logId, `✗ ${page} returned ${response.status}`, 'fail');
+          }
+        } catch (e) {
+          logTo(logId, `✗ ${page} error: ${e.message}`, 'fail');
+        }
+      }
+      logTo(logId, 'Page load tests complete', 'info');
+    };
+
+    const logNav = (target) => {
+      const logId = 'nav-log';
+      logTo(logId, `→ Navigating to ${target}...`, 'info');
+      try {
+        if (window.experienceNavigator) {
+          window.experienceNavigator.trackNavigation?.(target);
+          logTo(logId, `✓ Navigation tracked`, 'pass');
+        } else {
+          logTo(logId, `⚠ Navigator not available yet`, 'warn');
+        }
+      } catch (e) {
+        logTo(logId, `✗ Error: ${e.message}`, 'fail');
+      }
+    };
+
+    const checkNavigator = () => {
+      const logId = 'nav-check-log';
+      document.querySelector(`#${logId}`).innerHTML = '';
+
+      if (typeof ExperienceNavigator === 'function') {
+        logTo(logId, '✓ ExperienceNavigator class exists', 'pass');
+      } else {
+        logTo(logId, '✗ ExperienceNavigator class NOT found', 'fail');
+      }
+
+      if (window.experienceNavigator) {
+        logTo(logId, '✓ window.experienceNavigator instance exists', 'pass');
+        try {
+          const stats = window.experienceNavigator.getStats();
+          logTo(logId, `  Current experience: ${stats.currentExperience}`, 'info');
+          logTo(logId, `  Session ID: ${stats.sessionId}`, 'info');
+          logTo(logId, `  Experiences visited: ${stats.experiencesVisited.length}`, 'info');
+        } catch (e) {
+          logTo(logId, `  Error getting stats: ${e.message}`, 'warn');
+        }
+      } else {
+        logTo(logId, '✗ window.experienceNavigator NOT initialized', 'fail');
+      }
+    };
+
+    const checkSession = () => {
+      const logId = 'session-log';
+      document.querySelector(`#${logId}`).innerHTML = '';
+
+      try {
+        const session = sessionStorage.getItem('dreamhome-session');
+        if (session) {
+          const data = JSON.parse(session);
+          logTo(logId, '✓ Session data found', 'pass');
+          logTo(logId, `  Session ID: ${data.sessionId}`, 'info');
+          logTo(logId, `  Experiences: ${data.experiences?.length || 0}`, 'info');
+          if (data.lastNavigation) {
+            logTo(logId, `  Last nav: ${data.lastNavigation.from} → ${data.lastNavigation.to}`, 'info');
+          }
+        } else {
+          logTo(logId, 'ℹ No session data (first visit?)', 'info');
+        }
+      } catch (e) {
+        logTo(logId, `✗ Error: ${e.message}`, 'fail');
+      }
+    };
+
+    const clearSession = () => {
+      sessionStorage.clear();
+      const logId = 'session-log';
+      document.querySelector(`#${logId}`).innerHTML = '';
+      logTo(logId, '✓ Session cleared', 'pass');
+    };
+
+    // Auto-check on load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        logTo('nav-check-log', 'Auto-checking navigator on page load...', 'info');
+        checkNavigator();
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

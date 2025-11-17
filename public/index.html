@@ -3,33 +3,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DreamHome Real Estate</title>
+  <title>DreamHome Real Estate - VR/AR Experience</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-    .hero { background: #2e86de; color: #fff; padding: 40px 20px; text-align: center; }
-    .content { max-width: 600px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .contact { margin-top: 30px; font-size: 1.1em; }
-    .btn { display: inline-block; margin-top: 20px; padding: 12px 28px; background: #2e86de; color: #fff; border-radius: 4px; text-decoration: none; font-weight: bold; }
-    .btn:hover { background: #1456a0; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+    
+    .hero { color: #fff; padding: 60px 20px; text-align: center; }
+    .hero h1 { font-size: 3em; margin: 0 0 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+    .hero p { font-size: 1.3em; margin: 0 0 40px 0; opacity: 0.95; }
+    
+    .experiences { max-width: 1200px; margin: 40px auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 0 20px; }
+    
+    .experience-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.1); transition: transform 0.3s, box-shadow 0.3s; }
+    .experience-card:hover { transform: translateY(-5px); box-shadow: 0 12px 48px rgba(0,0,0,0.15); }
+    
+    .experience-header { padding: 30px 20px; text-align: center; }
+    .experience-header.vr { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .experience-header.ar { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .experience-header.test { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    
+    .experience-header h2 { color: #fff; margin: 0 0 10px 0; font-size: 1.8em; }
+    .experience-header p { color: rgba(255,255,255,0.9); margin: 0; font-size: 0.95em; }
+    
+    .experience-content { padding: 25px; }
+    .experience-content ul { list-style: none; padding: 0; margin: 0; }
+    .experience-content li { padding: 10px 0; color: #666; border-bottom: 1px solid #eee; display: flex; align-items: center; }
+    .experience-content li:last-child { border-bottom: none; }
+    .experience-content li:before { content: '✓'; color: #667eea; font-weight: bold; margin-right: 10px; font-size: 1.2em; }
+    
+    .experience-footer { padding: 20px; border-top: 1px solid #eee; }
+    .btn { display: inline-block; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: bold; cursor: pointer; border: none; font-size: 1em; transition: 0.3s; width: 100%; text-align: center; }
+    .btn-vr { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+    .btn-vr:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+    
+    .btn-ar { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; }
+    .btn-ar:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4); }
+    
+    .btn-test { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: #fff; }
+    .btn-test:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4); }
+    
+    .content { max-width: 1200px; margin: 60px auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+    .contact { margin-top: 30px; font-size: 1.1em; text-align: center; color: #666; }
+    
+    .footer { text-align: center; padding: 40px 20px; color: #fff; opacity: 0.8; }
   </style>
 </head>
 <body>
   <div class="hero">
-    <h1>DreamHome Real Estate</h1>
-    <p>Your dream home is just a click away.</p>
-    <a href="#contact" class="btn">Contact Us</a>
+    <h1>🏠 DreamHome Real Estate</h1>
+    <p>Explore properties with cutting-edge VR & AR technology</p>
   </div>
-  <div class="content">
-    <h2>Featured Listings</h2>
-    <ul>
-      <li>Modern 3BR Apartment in Downtown</li>
-      <li>Cozy 2BR Cottage near the Lake</li>
-      <li>Luxury Villa with Private Pool</li>
-    </ul>
-    <div class="contact" id="contact">
-      <h3>Contact</h3>
-      <p>Email: info@dreamhome.com<br>Phone: (555) 123-4567</p>
+  
+  <div class="experiences">
+    <!-- VR Experience Card -->
+    <div class="experience-card">
+      <div class="experience-header vr">
+        <h2>🥽 Virtual Reality</h2>
+        <p>Realidad Virtual (VR)</p>
+      </div>
+      <div class="experience-content">
+        <ul>
+          <li>Full 3D property tours</li>
+          <li>Hand gesture controls</li>
+          <li>Real-time analytics</li>
+          <li>Performance profiling</li>
+          <li>360° immersion</li>
+        </ul>
+      </div>
+      <div class="experience-footer">
+        <a href="/vr.html" class="btn btn-vr">Launch VR Experience</a>
+      </div>
     </div>
+    
+    <!-- AR Experience Card -->
+    <div class="experience-card">
+      <div class="experience-header ar">
+        <h2>📱 Tour AR Inmobiliario</h2>
+        <p>Visualiza propiedades en Realidad Aumentada</p>
+      </div>
+      <div class="experience-content">
+        <ul>
+          <li>🏠 Modelos 3D en tiempo real</li>
+          <li>👆 Interacción táctil intuitiva</li>
+          <li>🔄 Rotar y explorar propiedades</li>
+          <li>📱 Sin app, solo navegador</li>
+          <li>💬 Compartir por WhatsApp/Email</li>
+        </ul>
+      </div>
+      <div class="experience-footer">
+        <a href="/ar.html" class="btn btn-ar">🚀 Iniciar Tour AR</a>
+      </div>
+    </div>
+    
+    <!-- Testing Card -->
+    <div class="experience-card">
+      <div class="experience-header test">
+        <h2>🧪 Test Dashboard</h2>
+        <p>Integration Testing</p>
+      </div>
+      <div class="experience-content">
+        <ul>
+          <li>Module testing</li>
+          <li>API validation</li>
+          <li>Performance metrics</li>
+          <li>Data export</li>
+          <li>System diagnostics</li>
+        </ul>
+      </div>
+      <div class="experience-footer">
+        <a href="/integration-test.html" class="btn btn-test">Open Test Suite</a>
+      </div>
+    </div>
+  </div>
+  
+  <div class="content">
+    <h2>📍 Featured Properties</h2>
+    <p>Explore our premium collection using VR or AR:</p>
+    <ul>
+      <li>✨ Modern 3BR Apartment in Downtown - Interactive VR Tour</li>
+      <li>🌲 Cozy 2BR Cottage near the Lake - AR Property Preview</li>
+      <li>👑 Luxury Villa with Private Pool - Full 360° Experience</li>
+    </ul>
+    
+    <div class="contact" id="contact">
+      <h3>📞 Contact Information</h3>
+      <p><strong>Email:</strong> info@dreamhome.com<br>
+      <strong>Phone:</strong> (555) 123-4567<br>
+      <strong>Website:</strong> www.dreamhome-vr.com</p>
+      <p style="margin-top: 20px; font-size: 0.9em; color: #999;">DreamHome Real Estate © 2024 | VR/AR Technology by VRInmobiliariaPeruKivo</p>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <p>Choose your experience: VR for immersive tours, AR for on-site previews, or Test Dashboard for system verification</p>
   </div>
 </body>
 </html>

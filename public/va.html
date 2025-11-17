@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no" />
+  <title>DreamHome AR — Augmented Reality Experience</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/loaders/GLTFLoader.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      margin: 0; 
+      background: #000; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+    
+    #ar-debug {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.95);
+      color: #ff69b4;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      padding: 12px;
+      max-width: 280px;
+      z-index: 999;
+      border: 2px solid #ff69b4;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    .debug-line { 
+      margin: 2px 0; 
+      line-height: 1.3;
+    }
+    .debug-title { 
+      font-weight: bold; 
+      margin-bottom: 6px; 
+      color: #ff69b4; 
+      text-shadow: 0 0 5px #ff69b4;
+    }
+    .debug-value { 
+      color: #ffaadd; 
+      font-weight: 500;
+    }
+
+    #ar-controls {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.95);
+      color: #fff;
+      padding: 15px;
+      border: 2px solid #ff69b4;
+      border-radius: 4px;
+      max-width: 250px;
+      z-index: 999;
+      box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+    }
+
+    #ar-controls h3 {
+      margin: 0 0 10px 0;
+      color: #ff69b4;
+      font-size: 12px;
+      text-shadow: 0 0 5px #ff69b4;
+    }
+
+    .control-group {
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .control-input {
+      padding: 6px;
+      border: 1px solid #ff69b4;
+      border-radius: 2px;
+      background: #1a1a1a;
+      color: #fff;
+      font-size: 9px;
+      outline: none;
+      width: 100%;
+    }
+
+    .control-input:focus {
+      border-color: #00ff00;
+      box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+    }
+
+    .control-btn {
+      padding: 6px 10px;
+      background: #ff69b4;
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 9px;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    .control-btn:hover {
+      background: #ff1493;
+      box-shadow: 0 0 8px rgba(255, 105, 180, 0.5);
+    }
+
+    #back-btn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      background: #667eea;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      z-index: 998;
+      font-size: 12px;
+    }
+
+    #back-btn:hover {
+      background: #764ba2;
+    }
+
+    #instructions {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.9);
+      color: #ffaadd;
+      padding: 12px;
+      text-align: center;
+      font-size: 11px;
+      border-top: 2px solid #ff69b4;
+      z-index: 995;
+    }
+  </style>
+</head>
+<body>
+  <!-- Back Button -->
+  <button id="back-btn">← Back to Home</button>
+
+  <!-- AR Debug Panel -->
+  <div id="ar-debug">
+    <div class="debug-title">📱 AR Reality Experience</div>
+    <div class="debug-line">Status: <span class="debug-value" id="ar-status">INIT</span></div>
+    <div class="debug-line">Mode: <span class="debug-value" id="ar-mode">Camera-Based</span></div>
+    <div class="debug-line">---</div>
+    <div class="debug-line">Camera Pos: <span class="debug-value" id="ar-camera-pos">0.0, 0.0, 0.0</span></div>
+    <div class="debug-line">Render: <span class="debug-value" id="ar-render">Ready</span></div>
+    <div class="debug-line">---</div>
+    <div class="debug-line">Objects: <span class="debug-value" id="ar-objects">3</span></div>
+    <div class="debug-line">Gestures: <span class="debug-value" id="ar-gestures">Active</span></div>
+    <div class="debug-line">---</div>
+    <div class="debug-line">Performance:</div>
+    <div class="debug-line">  FPS: <span class="debug-value" id="ar-fps">60</span></div>
+    <div class="debug-line">  Latency: <span class="debug-value" id="ar-latency">0ms</span></div>
+    <div class="debug-line">---</div>
+    <div class="debug-line" style="font-size: 9px; color: #aaa;">
+      <strong>Interact:</strong><br/>
+      Tap objects • Pinch to scale • Move camera
+    </div>
+  </div>
+
+  <!-- AR Controls -->
+  <div id="ar-controls">
+    <h3>📡 AR Controls</h3>
+    <div class="control-group">
+      <label style="font-size: 9px; color: #aaa;">Object Scale:</label>
+      <input type="range" id="scale-slider" class="control-input" min="0.1" max="3" step="0.1" value="1" />
+    </div>
+    <div class="control-group">
+      <label style="font-size: 9px; color: #aaa;">Rotation (°):</label>
+      <input type="range" id="rotation-slider" class="control-input" min="0" max="360" step="5" value="45" />
+    </div>
+    <button class="control-btn" id="load-property-btn">Load Property</button>
+    <button class="control-btn" id="reset-view-btn">Reset View</button>
+    <button class="control-btn" id="take-screenshot-btn">📸 Shot</button>
+  </div>
+
+  <!-- Instructions -->
+  <div id="instructions">
+    📱 Camera-based AR | Move camera to explore property | Use controls to interact | Try pinch gesture to scale
+  </div>
+
+  <!-- A-Frame AR Scene with Camera Input -->
+  <a-scene vr-mode-ui="enabled: false" renderer="antialias: true; physicallyCorrectLights: true" background="color: #87CEEB">
+    <!-- Lighting setup for AR realism -->
+    <a-light type="directional" intensity="1" position="10 15 10" shadow="cast: true"></a-light>
+    <a-light type="ambient" intensity="0.6"></a-light>
+    <a-light type="hemisphere" sky-color="#87CEEB" ground-color="#90EE90" intensity="0.7"></a-light>
+
+    <!-- Ground (Real World Reference) -->
+    <a-plane id="ground-plane" rotation="-90 0 0" width="20" height="20" color="#2d5016" static-body position="0 0 0" shadow="receive: true"></a-plane>
+
+    <!-- Sky simulation -->
+    <a-sky id="sky" color="#87CEEB"></a-sky>
+
+    <!-- Main Camera (Real World Camera) -->
+    <a-entity id="camera-rig" position="0 1.7 0">
+      <!-- The actual camera looking at world -->
+      <a-camera id="main-camera" position="0 0 0" wasd-controls="fly: true; acceleration: 15">
+        <!-- Crosshair cursor for AR targeting -->
+        <a-cursor id="ar-cursor" 
+          color="#ff69b4" 
+          opacity="0.5"
+          scale="0.015 0.015 0.015" 
+          position="0 0 -5"
+          fuse="true"
+          fuse-timeout="3000"
+          raycaster="far: 50; interval: 100">
+        </a-cursor>
+      </a-camera>
+    </a-entity>
+
+    <!-- AR Property Display Group (Positioned in world space) -->
+    <a-entity id="property-display-group" position="0 1.2 -3" rotation="0 45 0">
+      <!-- Main property container -->
+      <a-box id="property-box" 
+        color="#FF69B4" 
+        position="0 0 0" 
+        scale="0.6 0.6 0.6"
+        shadow="cast: true; receive: true"
+        animation="property: rotation; to: 0 360 0; dur: 6000; easing: linear; loop: true">
+      </a-box>
+
+      <!-- Property info display -->
+      <a-text id="property-label" 
+        value="PROPERTY&#10;---&#10;Modern Villa&#10;$450,000" 
+        align="center" 
+        anchor="center"
+        position="0 0 0.35"
+        scale="2 2 2"
+        color="#fff"
+        background="color: #000; padding: 0.1"
+        font="roboto">
+      </a-text>
+
+      <!-- Secondary AR markers -->
+      <a-sphere id="marker-1" color="#00ff00" position="1 0 0" scale="0.2 0.2 0.2" shadow="cast: true"></a-sphere>
+      <a-sphere id="marker-2" color="#ffff00" position="-1 0 0" scale="0.2 0.2 0.2" shadow="cast: true"></a-sphere>
+      <a-cylinder id="marker-3" color="#00ffff" position="0 0 1" scale="0.15 0.4 0.15" shadow="cast: true"></a-cylinder>
+    </a-entity>
+
+    <!-- AR Reference Grid (for spatial understanding) -->
+    <a-entity id="ar-grid" position="0 0.01 -5">
+      <a-plane width="4" height="4" color="#444444" opacity="0.3" rotation="-90 0 0"></a-plane>
+    </a-entity>
+
+    <!-- Additional AR Indicators -->
+    <a-entity id="distance-indicator" position="0 2 -3">
+      <a-text value="Distance: 3m" align="center" color="#00ff00" scale="1.5 1.5 1.5"></a-text>
+    </a-entity>
+  </a-scene>
+
+  <!-- Scripts -->
+  <script>
+    /**
+     * AR Scene Manager
+     * Handles AR-specific interactions with camera-based positioning
+     */
+    class ARSceneManager {
+      constructor() {
+        this.scale = 1;
+        this.rotation = 0;
+        this.isInitialized = false;
+        this.lastTouchDistance = 0;
+        this.gesturesDetected = [];
+        
+        this.scene = document.querySelector('a-scene');
+        this.propertyBox = document.querySelector('#property-box');
+        this.camera = document.querySelector('#main-camera');
+        this.propertyGroup = document.querySelector('#property-display-group');
+        this.debugPanels = {
+          status: document.querySelector('#ar-status'),
+          render: document.querySelector('#ar-render'),
+          fps: document.querySelector('#ar-fps'),
+          latency: document.querySelector('#ar-latency'),
+          cameraPos: document.querySelector('#ar-camera-pos')
+        };
+
+        this.init();
+      }
+
+      init() {
+        console.log('[AR] Initializing AR Experience Manager');
+        
+        // Setup scene ready handler
+        this.scene.addEventListener('loaded', () => this.onSceneLoaded());
+        
+        // Setup control listeners
+        this.setupControls();
+        
+        // Setup back button
+        this.setupBackButton();
+        
+        // Setup gesture recognition
+        this.setupGestureRecognition();
+        
+        // Start update loop
+        this.startUpdateLoop();
+
+        this.isInitialized = true;
+        this.debugPanels.status.textContent = 'READY';
+        console.log('[AR] ✓ AR Manager Ready');
+      }
+
+      onSceneLoaded() {
+        console.log('[AR] Scene loaded - AR objects positioned in world space');
+        this.debugPanels.render.textContent = 'Rendering';
+        
+        // Log position
+        const pos = this.propertyGroup.getAttribute('position');
+        console.log('[AR] Property group positioned at', pos);
+      }
+
+      setupControls() {
+        // Scale slider
+        document.querySelector('#scale-slider').addEventListener('change', (e) => {
+          this.scale = parseFloat(e.target.value);
+          this.propertyBox.setAttribute('scale', `${this.scale} ${this.scale} ${this.scale}`);
+          console.log('[AR] Scale changed to', this.scale);
+        });
+
+        // Rotation slider
+        document.querySelector('#rotation-slider').addEventListener('change', (e) => {
+          this.rotation = parseFloat(e.target.value);
+          const group = this.propertyGroup.getAttribute('rotation');
+          this.propertyGroup.setAttribute('rotation', `${group.x} ${this.rotation} ${group.z}`);
+          console.log('[AR] Rotation changed to', this.rotation);
+        });
+
+        // Property load button
+        document.querySelector('#load-property-btn').addEventListener('click', () => {
+          this.loadProperty();
+        });
+
+        // Reset view button
+        document.querySelector('#reset-view-btn').addEventListener('click', () => {
+          this.resetView();
+        });
+
+        // Screenshot button
+        document.querySelector('#take-screenshot-btn').addEventListener('click', () => {
+          this.takeScreenshot();
+        });
+      }
+
+      setupBackButton() {
+        document.querySelector('#back-btn').addEventListener('click', () => {
+          console.log('[AR] Navigating back to home');
+          window.location.href = '/';
+        });
+      }
+
+      setupGestureRecognition() {
+        // Touch pinch gesture for scaling
+        document.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 2) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            this.lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+          }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+          if (e.touches.length === 2) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (this.lastTouchDistance > 0) {
+              const delta = distance / this.lastTouchDistance;
+              this.scale *= delta;
+              this.scale = Math.max(0.1, Math.min(3, this.scale)); // Clamp to valid range
+              
+              this.propertyBox.setAttribute('scale', `${this.scale} ${this.scale} ${this.scale}`);
+              document.querySelector('#scale-slider').value = this.scale;
+              
+              console.log('[AR] Pinch gesture: scale =', this.scale.toFixed(2));
+              this.gesturesDetected.push({ type: 'pinch', scale: this.scale });
+            }
+            this.lastTouchDistance = distance;
+          }
+        });
+      }
+
+      loadProperty() {
+        const properties = [
+          { name: 'Modern Villa', price: '$450,000' },
+          { name: 'Beach House', price: '$650,000' },
+          { name: 'Mountain Mansion', price: '$1,200,000' }
+        ];
+        const prop = properties[Math.floor(Math.random() * properties.length)];
+        
+        // Update display
+        const label = document.querySelector('#property-label');
+        label.setAttribute('value', `PROPERTY\n---\n${prop.name}\n${prop.price}`);
+        
+        // Flash effect
+        this.propertyBox.setAttribute('material', 'color: #00ff00');
+        setTimeout(() => {
+          this.propertyBox.setAttribute('material', 'color: #FF69B4');
+        }, 300);
+
+        console.log('[AR] Loaded property:', prop.name);
+        this.gesturesDetected.push({ type: 'property-loaded', property: prop });
+      }
+
+      resetView() {
+        this.scale = 1;
+        this.rotation = 45;
+        
+        this.propertyBox.setAttribute('scale', '0.6 0.6 0.6');
+        this.propertyGroup.setAttribute('rotation', '0 45 0');
+        document.querySelector('#scale-slider').value = 1;
+        document.querySelector('#rotation-slider').value = 45;
+
+        // Reset camera position
+        this.camera.setAttribute('position', '0 0 0');
+        
+        console.log('[AR] View reset');
+        this.gesturesDetected.push({ type: 'reset' });
+      }
+
+      takeScreenshot() {
+        const canvas = document.querySelector('a-scene canvas') || this.scene.canvas;
+        if (canvas) {
+          const link = document.createElement('a');
+          link.href = canvas.toDataURL('image/png');
+          link.download = `ar-screenshot-${Date.now()}.png`;
+          link.click();
+          console.log('[AR] Screenshot saved');
+        } else {
+          console.warn('[AR] Could not capture canvas');
+        }
+      }
+
+      startUpdateLoop() {
+        let frameCount = 0;
+        let lastTime = Date.now();
+
+        const updateLoop = () => {
+          frameCount++;
+          const now = Date.now();
+          const elapsed = now - lastTime;
+
+          if (elapsed >= 1000) {
+            const fps = Math.round((frameCount * 1000) / elapsed);
+            this.debugPanels.fps.textContent = fps;
+            frameCount = 0;
+            lastTime = now;
+          }
+
+          // Update camera position display
+          const camPos = this.camera.getAttribute('position');
+          if (camPos) {
+            this.debugPanels.cameraPos.textContent = `${camPos.x.toFixed(1)}, ${camPos.y.toFixed(1)}, ${camPos.z.toFixed(1)}`;
+          }
+
+          requestAnimationFrame(updateLoop);
+        };
+
+        updateLoop();
+      }
+
+      exportSession() {
+        return {
+          gestures: this.gesturesDetected,
+          finalScale: this.scale,
+          finalRotation: this.rotation,
+          timestamp: Date.now()
+        };
+      }
+    }
+
+    // Initialize AR on scene load
+    setTimeout(() => {
+      const arManager = new ARSceneManager();
+      window.arManager = arManager;
+      console.log('[AR] Scene Manager ready at window.arManager');
+    }, 500);
+  </script>
+
+  <!-- Load Experience Navigator for page connections -->
+  <script src="/js/experience-navigator.js"></script>
+
+</body>
+</html>

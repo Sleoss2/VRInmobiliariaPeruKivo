@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Navigation Test</title>
+  <style>
+    body { font-family: monospace; background: #1a1a1a; color: #0f0; padding: 20px; }
+    .test { margin: 20px 0; padding: 10px; border: 1px solid #0f0; }
+    .pass { color: #0f0; }
+    .fail { color: #f00; }
+    button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; margin: 5px; }
+    button:hover { background: #00ff00; }
+    #log { background: #000; padding: 10px; max-height: 300px; overflow-y: auto; margin-top: 10px; }
+    .log-line { margin: 2px 0; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <h1>🔍 DreamHome Navigation System Test</h1>
+  
+  <div class="test">
+    <h2>Test 1: Check Pages Load</h2>
+    <button onclick="testPageLoad('/vr.html')">Test VR.html</button>
+    <button onclick="testPageLoad('/va.html')">Test VA.html (AR)</button>
+    <button onclick="testPageLoad('/')">Test Home</button>
+  </div>
+
+  <div class="test">
+    <h2>Test 2: Check Navigator Module</h2>
+    <button onclick="testNavigator()">Test Navigator Loaded</button>
+  </div>
+
+  <div class="test">
+    <h2>Test 3: Check Navigation Links</h2>
+    <button onclick="testNavigationUI()">Check Nav UI Elements</button>
+  </div>
+
+  <div class="test">
+    <h2>Test 4: Session Persistence</h2>
+    <button onclick="testSessionStorage()">Check Session Storage</button>
+  </div>
+
+  <div class="test">
+    <h2>🎯 Full Navigation Flow</h2>
+    <p>Click these in order to test complete flow:</p>
+    <button onclick="navigateTo('/')">1. Go Home</button>
+    <button onclick="navigateTo('/vr.html')">2. Go to VR</button>
+    <button onclick="navigateTo('/va.html')">3. Go to AR</button>
+    <button onclick="checkSession()">4. Check Session</button>
+  </div>
+
+  <div id="log"></div>
+
+  <script>
+    const log = (msg, type = 'info') => {
+      const logDiv = document.querySelector('#log');
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      line.textContent = `${new Date().toLocaleTimeString()} [${type.toUpperCase()}] ${msg}`;
+      logDiv.appendChild(line);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    };
+
+    const testPageLoad = async (page) => {
+      log(`Testing page load: ${page}`, 'info');
+      try {
+        const response = await fetch(page);
+        if (response.ok) {
+          const html = await response.text();
+          if (html.includes('html')) {
+            log(`✓ ${page} loaded successfully`, 'pass');
+            if (page !== '/') {
+              if (html.includes('experience-navigator')) {
+                log(`✓ ${page} includes navigator script`, 'pass');
+              } else {
+                log(`✗ ${page} missing navigator script`, 'fail');
+              }
+            }
+          }
+        } else {
+          log(`✗ ${page} returned ${response.status}`, 'fail');
+        }
+      } catch (err) {
+        log(`✗ Error loading ${page}: ${err.message}`, 'fail');
+      }
+    };
+
+    const testNavigator = () => {
+      log('Checking ExperienceNavigator...', 'info');
+      if (typeof ExperienceNavigator !== 'undefined') {
+        log('✓ ExperienceNavigator class found', 'pass');
+      } else {
+        log('✗ ExperienceNavigator class NOT found', 'fail');
+      }
+      if (window.experienceNavigator) {
+        log('✓ window.experienceNavigator instance found', 'pass');
+        const stats = window.experienceNavigator.getStats?.();
+        if (stats) {
+          log(`  Current: ${stats.currentExperience}`, 'info');
+          log(`  Session: ${stats.sessionId}`, 'info');
+        }
+      } else {
+        log('✗ window.experienceNavigator NOT initialized', 'fail');
+      }
+    };
+
+    const testNavigationUI = () => {
+      log('Checking Navigation UI...', 'info');
+      const switcher = document.querySelector('#experience-switcher');
+      if (switcher) {
+        log('✓ Navigation switcher found in DOM', 'pass');
+        const buttons = switcher.querySelectorAll('a');
+        log(`  Found ${buttons.length} navigation buttons`, 'info');
+        buttons.forEach(btn => {
+          log(`  - ${btn.textContent.trim()}`, 'info');
+        });
+      } else {
+        log('✗ Navigation switcher NOT in DOM (may not be on VR/AR page)', 'info');
+      }
+    };
+
+    const testSessionStorage = () => {
+      log('Checking Session Storage...', 'info');
+      try {
+        const session = sessionStorage.getItem('dreamhome-session');
+        if (session) {
+          const data = JSON.parse(session);
+          log('✓ Session data found', 'pass');
+          log(`  Session ID: ${data.sessionId}`, 'info');
+          log(`  Experiences: ${data.experiences?.length || 0}`, 'info');
+        } else {
+          log('ℹ No session data yet (first visit?)', 'info');
+        }
+      } catch (err) {
+        log(`✗ Error reading session: ${err.message}`, 'fail');
+      }
+    };
+
+    const navigateTo = (page) => {
+      log(`Navigation: ${window.location.pathname} → ${page}`, 'info');
+      if (window.experienceNavigator) {
+        window.experienceNavigator.trackNavigation?.(page);
+      }
+      window.location.href = page;
+    };
+
+    const checkSession = () => {
+      log('Final Session Check:', 'info');
+      try {
+        const session = sessionStorage.getItem('dreamhome-session');
+        if (session) {
+          const data = JSON.parse(session);
+          log(`Session ID: ${data.sessionId}`, 'pass');
+          if (data.experiences && data.experiences.length > 0) {
+            log(`✓ Visited ${data.experiences.length} experience(s)`, 'pass');
+            data.experiences.forEach((exp, i) => {
+              log(`  ${i + 1}. ${exp.experience.toUpperCase()}`, 'info');
+            });
+          }
+          if (data.lastNavigation) {
+            log(`Last navigation: ${data.lastNavigation.from} → ${data.lastNavigation.to}`, 'info');
+          }
+        } else {
+          log('✗ No session data found', 'fail');
+        }
+      } catch (err) {
+        log(`✗ Error: ${err.message}`, 'fail');
+      }
+    };
+
+    // Auto-test on load
+    log('Test page loaded', 'pass');
+    setTimeout(() => {
+      log('Running auto-tests...', 'info');
+      testPageLoad('/')
+        .then(() => testPageLoad('/vr.html'))
+        .then(() => testPageLoad('/va.html'))
+        .then(() => {
+          log('Auto-tests complete', 'pass');
+        });
+    }, 500);
+  </script>
+</body>
+</html>

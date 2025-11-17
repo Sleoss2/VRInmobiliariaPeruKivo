@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Tour AR Inmobiliario - Visualiza propiedades en realidad aumentada">
+  <meta name="theme-color" content="#667eea">
+  <title>🏠 Tour AR Inmobiliario - DreamHome Real Estate</title>
+
+  <!-- A-Frame Framework (para VR/AR basado en HTML + Three.js) -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  
+  <!-- AR.js (Realidad Aumentada sin marcadores) -->
+  <script src="https://jeromeetienne.github.io/AR.js/aframe/build/aframe-ar.js"></script>
+
+  <!-- Gesture Handler para interacción mejorada -->
+  <script src="https://cdn.jsdelivr.net/npm/simple-gesture-handler@1.0.8/gesture-handler.js"></script>
+
+  <!-- Configuración AR -->
+  <script src="js/ar-config.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    /* Escena AR */
+    a-scene {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Controles flotantes */
+    #ar-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      pointer-events: auto;
+    }
+
+    .controls-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.85);
+      border-radius: 30px;
+      padding: 10px 15px;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(102, 126, 234, 0.5);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      border-radius: 25px;
+      width: 45px;
+      height: 45px;
+      font-size: 1.2em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .control-btn:active {
+      transform: scale(0.95);
+    }
+
+    .control-btn:hover {
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      transform: translateY(-2px);
+    }
+
+    .control-btn:nth-child(2n) {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      box-shadow: 0 4px 15px rgba(240, 87, 123, 0.4);
+    }
+
+    .control-btn:nth-child(2n):hover {
+      box-shadow: 0 6px 20px rgba(240, 87, 123, 0.6);
+    }
+
+    .property-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 0 10px;
+      min-width: 150px;
+      color: #fff;
+    }
+
+    .property-indicator span:first-child {
+      font-size: 0.9em;
+      font-weight: bold;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      max-width: 130px;
+    }
+
+    .property-indicator span:last-child {
+      font-size: 0.75em;
+      opacity: 0.8;
+    }
+
+    /* Panel de información */
+    #info-panel {
+      position: fixed;
+      bottom: 100px;
+      left: 10px;
+      right: 10px;
+      max-width: 400px;
+      max-height: 70vh;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3);
+      z-index: 99;
+      overflow-y: auto;
+      border: 2px solid rgba(102, 126, 234, 0.2);
+    }
+
+    @media (min-width: 768px) {
+      #info-panel {
+        left: auto;
+        right: 20px;
+        max-width: 380px;
+      }
+    }
+
+    .info-header {
+      padding: 20px;
+      color: #fff;
+      border-radius: 14px 14px 0 0;
+    }
+
+    .info-header h2 {
+      margin: 0 0 8px 0;
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+
+    .property-type {
+      font-size: 0.85em;
+      opacity: 0.95;
+      margin: 0;
+    }
+
+    .info-content {
+      padding: 20px;
+    }
+
+    .price-section {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .price, .area {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .details-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .detail-item .label {
+      font-size: 0.85em;
+      color: #999;
+      font-weight: 600;
+    }
+
+    .detail-item .value {
+      font-size: 1.2em;
+      color: #333;
+      font-weight: bold;
+    }
+
+    .features-section {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .section-title {
+      font-size: 0.95em;
+      font-weight: bold;
+      color: #333;
+      margin: 0 0 10px 0;
+    }
+
+    .features-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .features-list li {
+      font-size: 0.85em;
+      color: #666;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .features-list li:before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #667eea;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    .description-section {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .description-section p {
+      font-size: 0.9em;
+      color: #666;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-contact {
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.8em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: #fff;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .btn-phone {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-phone:active {
+      transform: scale(0.95);
+    }
+
+    .btn-whatsapp {
+      background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+      box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+    }
+
+    .btn-whatsapp:active {
+      transform: scale(0.95);
+    }
+
+    .btn-email {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      box-shadow: 0 4px 15px rgba(240, 87, 123, 0.3);
+    }
+
+    .btn-email:active {
+      transform: scale(0.95);
+    }
+
+    .btn-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      border-radius: 50%;
+      font-size: 1.2em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-close:hover {
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-close:active {
+      transform: scale(0.9);
+    }
+
+    /* Animaciones */
+    @keyframes slideUp {
+      from {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Mensaje de error */
+    .error-message {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 59, 48, 0.95);
+      color: #fff;
+      padding: 15px 25px;
+      border-radius: 10px;
+      z-index: 200;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);
+      animation: slideDown 0.3s ease-out;
+    }
+
+    /* Pantalla de carga */
+    .loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      font-size: 1.1em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .loading-subtext {
+      font-size: 0.9em;
+      opacity: 0.9;
+    }
+
+    /* Soporte VR (opcional) */
+    .vr-mode-ui {
+      display: none !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .controls-container {
+        padding: 8px 12px;
+        gap: 8px;
+      }
+
+      .control-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1em;
+      }
+
+      .property-indicator {
+        display: none;
+      }
+
+      #info-panel {
+        left: 5px;
+        right: 5px;
+        max-height: 60vh;
+      }
+
+      .action-buttons {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* Elemento AR */
+    .ar-model {
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    /* Instrucciones iniciales */
+    .instructions-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 140;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .instructions-content {
+      background: rgba(102, 126, 234, 0.95);
+      padding: 40px 30px;
+      border-radius: 20px;
+      max-width: 90%;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .instructions-content h1 {
+      font-size: 1.8em;
+      margin: 0 0 15px 0;
+    }
+
+    .instructions-content p {
+      font-size: 1em;
+      margin: 10px 0;
+      line-height: 1.6;
+    }
+
+    .instructions-content .btn {
+      margin-top: 20px;
+      padding: 12px 30px;
+      background: #fff;
+      color: #667eea;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 1em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .instructions-content .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <!-- Pantalla de carga -->
+  <div class="loading-screen" id="loading-screen">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">🏠 Tour AR Inmobiliario</div>
+    <div class="loading-subtext">Inicializando realidad aumentada...</div>
+  </div>
+
+  <!-- Instrucciones iniciales -->
+  <div class="instructions-overlay" id="instructions-overlay" style="display: none;">
+    <div class="instructions-content">
+      <h1>👋 Bienvenido al Tour AR</h1>
+      <p>📱 Apunta tu cámara a una superficie plana (piso o mesa)</p>
+      <p>👆 Toca los modelos 3D para ver información de la propiedad</p>
+      <p>➡️ Usa los botones para cambiar entre propiedades</p>
+      <button class="btn" onclick="startAR()">Comenzar</button>
+    </div>
+  </div>
+
+  <!-- Escena A-Frame con AR.js -->
+  <a-scene
+    embedded
+    arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false; patternRatio: 0.8;"
+    renderer="logarithmicDepthBuffer: true; precision: mediump; physicallyCorrectLights: true; antialias: true;"
+    vr-mode-ui="enabled: false"
+    gesture-handler
+  >
+    <!-- Cámara con controles por defecto -->
+    <a-entity camera></a-entity>
+
+    <!-- Entity contenedor para el modelo 3D que se cargará dinámicamente -->
+    <a-entity id="model-container"></a-entity>
+
+    <!-- Cielo (para mejor iluminación) -->
+    <a-sky color="#87CEEB"></a-sky>
+  </a-scene>
+
+  <!-- Scripts -->
+  <script src="js/ar-controller.js"></script>
+
+  <script>
+    /**
+     * Inicia la experiencia AR
+     */
+    function startAR() {
+      const instructionsOverlay = document.getElementById('instructions-overlay');
+      const loadingScreen = document.getElementById('loading-screen');
+      
+      instructionsOverlay.style.display = 'none';
+      loadingScreen.style.display = 'none';
+
+      // Registrar evento de analítica
+      if (arController) {
+        arController.trackEvent('AR_Started', {
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
+    /**
+     * Mostrar instrucciones después de cargar
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const loadingScreen = document.getElementById('loading-screen');
+        const instructionsOverlay = document.getElementById('instructions-overlay');
+        
+        loadingScreen.style.display = 'none';
+        instructionsOverlay.style.display = 'flex';
+      }, 2000);
+    });
+
+    /**
+     * Permitir inicio con Enter
+     */
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const overlay = document.getElementById('instructions-overlay');
+        if (overlay.style.display !== 'none') {
+          startAR();
+        }
+      }
+    });
+
+    /**
+     * Detectar WebGL
+     */
+    function hasWebGL() {
+      try {
+        const canvas = document.createElement('canvas');
+        return !!(
+          window.WebGLRenderingContext && 
+          (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+        );
+      } catch(e) {
+        return false;
+      }
+    }
+
+    if (!hasWebGL()) {
+      alert('❌ Tu dispositivo no soporta WebGL. La experiencia AR no funcionará.');
+    }
+
+    // Log de inicio
+    console.log('%c🏠 Tour AR Inmobiliario', 'color: #667eea; font-size: 16px; font-weight: bold;');
+    console.log('%cPropiedades cargadas: ' + AR_CONFIG.properties.length, 'color: #666;');
+  </script>
+</body>
+</html>
